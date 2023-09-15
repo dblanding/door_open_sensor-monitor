@@ -30,6 +30,7 @@ def connect():
     max_wait = 10
     while max_wait > 0:
         if wlan.status() < 0 or wlan.status() >= 3:
+            print("wlan.status =", wlan.status())
             break
         max_wait -= 1
         print('waiting for connection...')
@@ -40,9 +41,20 @@ def connect():
     else:
         print('connected')
         status = wlan.ifconfig()
-        ip = status[0]
         print('ip = ' + status[0])
-    return ip
+
+def network_connection_OK():
+    if not wlan.status() == 3:
+        return False
+    else:
+        return True
+
+def connect_to_network():
+    try:
+        connect()
+    except Exception as e:
+        print(e)
+        connect_to_network()
 
 async def get_distance():
     """
@@ -67,10 +79,14 @@ async def main():
         Otherwise once per second.
     """
     print('Connecting to Network...')
-    connect()
+    connect_to_network()
     dist = 0
     count = 5  # seconds between readings
     while True:
+        
+        if not network_connection_OK():
+            connect_to_network()
+
         count -= 1
         if count == 0:
             dist = await get_distance()
