@@ -34,3 +34,5 @@
 
 ![Sensor board](imgs/sensor.jpg)
 
+![Breadboard Diagram](imgs/hcs04_bb.png)
+
