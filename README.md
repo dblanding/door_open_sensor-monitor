@@ -15,9 +15,10 @@
 * A **distance sensor** detects the presence of the garage door in the open position
     * The sensor publishes the distance on a webserver
 * A remotely located **monitor** periodically requests the distance value from the sensor
-    * The monitor (located where I will notice it before going to bed) flashes its onboard LED either quickly or slowly:
-        * Quickly if the door is open (The distance is below a threshold value)
-        * Otherwise slowly (if closed)
+    * The monitor (located where I will notice it before going to bed) flashes its onboard LED at a **rate** which is **tri-modal**:
+        * 5 flashes per second if the door is open (distance is below a threshold value)
+        * 1 flash per second if the door is closed (distance exceeds the threshold value)
+        * 1 flash every 5 seconds if the distance value was not received
 
 ## Unanticipated problems (RF Interference with garage door opener)
 
