@@ -2,6 +2,7 @@
 MicroPython webserver for distance sensor project
 * Uses HCSR04 ultrasonic distance sensor
 * Asynchrounous webserver reports distance (mm) in json format
+Power failure tolerant
 """
 
 import gc
@@ -26,6 +27,7 @@ sensor = HCSR04(trigger_pin=2, echo_pin=3, echo_timeout_us=10000)
 wlan = network.WLAN(network.STA_IF)
 
 def connect():
+    """Return True on successful connection, otherwise False"""
     wlan.active(True)
     wlan.config(pm = 0xa11140) # Disable power-save mode
     wlan.connect(ssid, password)
@@ -39,25 +41,13 @@ def connect():
         print('waiting for connection...')
         time.sleep(1)
 
-    if wlan.status() != 3:
-        raise RuntimeError('network connection failed')
+    if not wlan.isconnected():
+        return False
     else:
         print('connected')
         status = wlan.ifconfig()
         print('ip = ' + status[0])
-
-def network_connection_OK():
-    if not wlan.status() == 3:
-        return False
-    else:
         return True
-
-def connect_to_network():
-    try:
-        connect()
-    except Exception as e:
-        print(e)
-        connect_to_network()
 
 async def serve_client(reader, writer):
     print("Client connected")
@@ -80,13 +70,19 @@ async def serve_client(reader, writer):
 
 async def main():
     print('Connecting to Network...')
-    connect_to_network()
+    connect()
 
     print('Setting up webserver...')
     asyncio.create_task(asyncio.start_server(serve_client, "0.0.0.0", 80))
+
+    loop_count = 0
     while True:
-        if not network_connection_OK():
-            connect_to_network()
+        # Test WiFi connection twice per minute
+        if loop_count == 30:
+            loop_count = 0
+            if not wlan.isconnected():
+                wlan.disconnect()
+                success = connect()
 
         # Flash LED
         led.on()

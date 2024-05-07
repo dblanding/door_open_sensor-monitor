@@ -4,6 +4,7 @@ and displaying whether object is detected (door open).
 LED flashes 5x per second when door is detected (0 < dist < 200mm).
 elif dist > 200mm, LED toggles once per second.
 If unable to reach server, LED toggles once per 5 seconds.
+Power Failure tolerant
 """
 
 import gc
@@ -24,6 +25,7 @@ led = Pin("LED", Pin.OUT, value=0)
 wlan = network.WLAN(network.STA_IF)
 
 def connect():
+    """Return True on successful connection, otherwise False"""
     wlan.active(True)
     wlan.config(pm = 0xa11140) # Disable power-save mode
     wlan.connect(ssid, password)
@@ -37,25 +39,19 @@ def connect():
         print('waiting for connection...')
         time.sleep(1)
 
-    if wlan.status() != 3:
-        raise RuntimeError('network connection failed')
+    if not wlan.isconnected():
+        return False
     else:
         print('connected')
         status = wlan.ifconfig()
         print('ip = ' + status[0])
+        return True
 
 def network_connection_OK():
     if not wlan.status() == 3:
         return False
     else:
         return True
-
-def connect_to_network():
-    try:
-        connect()
-    except Exception as e:
-        print(e)
-        connect_to_network()
 
 async def get_distance():
     """
@@ -80,19 +76,21 @@ async def main():
         Otherwise once per second.
     """
     print('Connecting to Network...')
-    connect_to_network()
+    connect()
     dist = 0
     count = 0  # seconds between readings
     while True:
-        print(f"count = {count}")
-        if not network_connection_OK():
-            connect_to_network()
+        # Test WiFi connection twice per minute
+        if count == 30:
+            count = 0
+            if not wlan.isconnected():
+                wlan.disconnect()
+                success = connect()
 
         count += 1
-        if count == 5:
+        if count % 5 == 0:
             dist = await get_distance()
             print(dist)
-            count = 0
 
         if 0 < dist < 400:
             # Quick flash LED
