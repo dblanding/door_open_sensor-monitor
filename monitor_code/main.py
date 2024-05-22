@@ -18,6 +18,7 @@ import urequests as requests
 
 ssid = secrets['ssid']
 password = secrets['wifi_password']
+ERROR_LOG_FILENAME = 'error_log.txt'
 
 # setup onboard LED
 led = Pin("LED", Pin.OUT, value=0)
@@ -47,12 +48,6 @@ def connect():
         print('ip = ' + status[0])
         return True
 
-def network_connection_OK():
-    if not wlan.status() == 3:
-        return False
-    else:
-        return True
-
 async def get_distance():
     """
     Get json data from server
@@ -70,7 +65,7 @@ async def get_distance():
 
 async def main():
     """
-    Get distance from distance sensor every 5 sec
+    Get distance from sensor every 5 sec
     Flash LED
         Quickly if door is open
         Otherwise once per second.
@@ -81,16 +76,15 @@ async def main():
     count = 0  # seconds between readings
     while True:
         # Test WiFi connection twice per minute
-        if count == 30:
+        if count % 30 == 0:
             count = 0
             if not wlan.isconnected():
                 wlan.disconnect()
                 success = connect()
 
-        count += 1
         if count % 5 == 0:
             dist = await get_distance()
-            print(dist)
+            # print(dist)
 
         if 0 < dist < 400:
             # Quick flash LED
@@ -105,12 +99,15 @@ async def main():
             await asyncio.sleep(0.9)
         else:
             # Blink LED once every 5 seconds
-            if count == 0:
-                led.on()
-                await asyncio.sleep(0.1)
-                led.off()
-                await asyncio.sleep(4.9)
+            led.on()
+            await asyncio.sleep(0.1)
+            led.off()
+            await asyncio.sleep(4.9)
+        count += 1
 try:
     asyncio.run(main())
+except Exception as e:
+    with open(ERROR_LOG_FILENAME, 'a') as f:
+        f.write(e)
 finally:
     asyncio.new_event_loop()
